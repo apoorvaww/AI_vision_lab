@@ -80,6 +80,32 @@
         </select>
       </label>
     </div>
+
+    <!-- Explainable AI (XAI) Options -->
+    <div class="panel" style="grid-column: 1 / -1">
+      <div class="panel-title">
+        <div>
+          <span class="eyebrow">EXPLAINABLE AI (XAI)</span>
+          <h3>Visual Attribution & Interpretability</h3>
+        </div>
+      </div>
+      <p style="color:var(--muted);font-size:12px;margin-bottom:14px">
+        Generate visual heatmaps highlighting which spatial regions influenced the prediction. Applied consistently across all convolutional and hybrid architectures.
+      </p>
+      <div style="display:flex;flex-wrap:wrap;gap:24px;align-items:center">
+        <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-weight:600">
+          <input type="checkbox" name="xai_enabled" value="true" {% if job.get('xai_enabled', True) %}checked{% endif %} style="width:18px;height:18px;accent-color:var(--accent)">
+          <span>Enable Explainability Heatmaps (Grad-CAM / Grad-CAM++)</span>
+        </label>
+        <label style="display:flex;align-items:center;gap:10px;font-size:13px">
+          <span style="color:#64748b">Attribution Algorithm:</span>
+          <select name="xai_method" style="padding:6px 12px;border-radius:6px;border:1px solid #cbd5e1;background:#fff;font-weight:600">
+            <option value="gradcam" {% if job.get('xai_method', 'gradcam')=='gradcam' %}selected{% endif %}>Grad-CAM (Standard 1st-Order Gradients)</option>
+            <option value="gradcampp" {% if job.get('xai_method')=='gradcampp' %}selected{% endif %}>Grad-CAM++ (Higher-Order Pixel Attribution)</option>
+          </select>
+        </label>
+      </div>
+    </div>
   </div>
 
   <div class="selected-strip">

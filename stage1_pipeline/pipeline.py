@@ -149,6 +149,14 @@ def run_stage1(
 
     best = trials[0]
 
+    # Identify trial with XAI visualizations (in case best is classical ML)
+    xai_trial = best
+    if not getattr(best, "xai_visualizations", None):
+        for t in trials:
+            if getattr(t, "xai_visualizations", None):
+                xai_trial = t
+                break
+
     code_snapshot = {}
     source_files = [
         "stage1_pipeline/models.py",
@@ -189,7 +197,16 @@ def run_stage1(
             "train_accuracy": best.train_accuracy,
             "generalization_gap": best.generalization_gap,
             "training_history": best.training_history,
+            "xai_enabled": getattr(best, "xai_enabled", False),
+            "xai_method": getattr(best, "xai_method", "gradcam"),
+            "xai_visualizations": getattr(best, "xai_visualizations", []),
+            "xai_note": getattr(best, "xai_note", ""),
         },
+        "xai_enabled": getattr(xai_trial, "xai_enabled", False),
+        "xai_method": getattr(xai_trial, "xai_method", "gradcam"),
+        "xai_visualizations": getattr(xai_trial, "xai_visualizations", []),
+        "xai_model_name": getattr(xai_trial, "model_name", best.model_name),
+        "xai_note": getattr(best, "xai_note", ""),
         "leaderboard": [t.to_dict() for t in trials],
         "evaluation": {
             "test_set_source": "provided test split" if report.test_files else "stratified holdout",

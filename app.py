@@ -237,6 +237,8 @@ def _launch_job(job_id):
     # Apply UI hyperparameter overrides to every DL / Hybrid model
     for key in search_space:
         m = MODEL_REGISTRY[key]
+        search_space[key]["xai_enabled"] = [job.get("xai_enabled", True)]
+        search_space[key]["xai_method"]  = [job.get("xai_method", "gradcam")]
         if m["family"] in ("dl", "hybrid"):
             search_space[key]["batch_size"]          = [job["batch_size"]]
             search_space[key]["learning_rate"]       = [job["learning_rate"]]
@@ -383,6 +385,8 @@ def start_job():
                 "gaussian_blur": recs.get("augmentation", {}).get("techniques", {}).get("gaussian_blur", {}).get("recommended", False),
             },
             "class_balancing_enabled": recs.get("class_balancing", {}).get("recommended", False),
+            "xai_enabled":             True,
+            "xai_method":              "gradcam",
             "created_at":      time.time(),
         }
 
@@ -619,6 +623,8 @@ def train_job(job_id):
         job["metric"]       = request.form.get("metric", "f1_macro")
         split_vals = request.form.getlist("split_ratios")
         job["split_ratios"] = [float(x) for x in split_vals] if split_vals else [0.8]
+        job["xai_enabled"]  = request.form.get("xai_enabled") in ("on", "true", "1")
+        job["xai_method"]   = request.form.get("xai_method", "gradcam")
 
     return _launch_job(job_id)
 
@@ -703,6 +709,17 @@ def results_page(job_id):
         return redirect(url_for("processing_page", job_id=job_id))
 
     result = job["result"]
+    best = result["best_config"]
+    # Fallback: ensure XAI visualizations are populated from leaderboard if missing on best
+    if not best.get("xai_visualizations"):
+        for t in result.get("leaderboard", []):
+            if t.get("xai_visualizations"):
+                best["xai_visualizations"] = t["xai_visualizations"]
+                best["xai_enabled"] = t.get("xai_enabled", True)
+                best["xai_method"] = t.get("xai_method", "gradcam")
+                best["xai_model_name"] = t.get("model_name", best.get("model_name"))
+                break
+
     return render_template(
         "results.html",
         active="results",
@@ -710,7 +727,7 @@ def results_page(job_id):
         job=job,
         result=result,
         leaderboard=result["leaderboard"],
-        best=result["best_config"],
+        best=best,
         dataset_summary=result["dataset_summary"],
     )
 
@@ -1118,6 +1135,40 @@ def download_pdf(job_id):
                 c.setFillColor(colors.HexColor("#1e293b"))
                 c.drawString(40 + (j + 1) * cell_w, y, str(val))
             y -= 14
+
+    # Explainable AI (Grad-CAM Heatmaps)
+    xai_vis = bc.get("xai_visualizations") or r.get("xai_visualizations", [])
+    if xai_vis:
+        y -= 20
+        y = new_page_if_needed(y, 110)
+        c.setFont("Helvetica-Bold", 12)
+        c.setFillColor(colors.HexColor("#1e1e2e"))
+        c.drawString(40, y, "Explainable AI (Grad-CAM Visual Heatmaps)")
+        y -= 16
+        c.setFont("Helvetica", 9)
+        c.setFillColor(colors.HexColor("#64748b"))
+        c.drawString(40, y, f"Spatial activation regions for {r.get('xai_model_name', bc['model_name'])}:")
+        y -= 16
+        import base64
+        from reportlab.lib.utils import ImageReader
+        for vis in xai_vis[:4]:
+            y = new_page_if_needed(y, 80)
+            c.setFont("Helvetica-Bold", 9)
+            c.setFillColor(colors.HexColor("#1e293b"))
+            c.drawString(40, y, f"Class: {vis['class_name']} ({vis['confidence']:.1%} Conf)")
+            y -= 62
+            try:
+                orig_raw = base64.b64decode(vis["original_base64"].split(",", 1)[1])
+                heat_raw = base64.b64decode(vis["heatmap_base64"].split(",", 1)[1])
+                c.drawImage(ImageReader(io.BytesIO(orig_raw)), 40, y, width=55, height=55)
+                c.drawImage(ImageReader(io.BytesIO(heat_raw)), 110, y, width=55, height=55)
+                c.setFont("Helvetica", 7)
+                c.setFillColor(colors.HexColor("#64748b"))
+                c.drawString(40, y - 8, "Original")
+                c.drawString(110, y - 8, f"{vis['method']} Heatmap")
+            except Exception:
+                pass
+            y -= 18
 
     c.save()
     buf.seek(0)

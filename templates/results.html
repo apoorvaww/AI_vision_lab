@@ -205,6 +205,80 @@
   </p>
 </div>
 
+<!-- Explainable AI (XAI) Visual Heatmaps -->
+{% set xai_vis = best.xai_visualizations if best.xai_visualizations else result.get('xai_visualizations', []) %}
+{% set xai_model = best.model_name if best.xai_visualizations else result.get('xai_model_name', best.model_name) %}
+{% set xai_method_name = best.xai_method if best.xai_visualizations else result.get('xai_method', 'gradcam') %}
+
+<div class="panel" style="margin-bottom:20px" id="xai-panel">
+  <div class="panel-title">
+    <div>
+      <span class="eyebrow">EXPLAINABLE AI (XAI)</span>
+      <h3>Grad-CAM & Grad-CAM++ Prediction Attribution</h3>
+    </div>
+    {% if xai_vis %}
+    <div style="display:flex;align-items:center;gap:10px">
+      {% if best.model_family in ['ml', 'ensemble'] %}
+      <span style="font-size:10px;font-weight:700;color:#0f766e;background:#ccfbf1;padding:3px 8px;border-radius:5px">
+        Showing Conv Net: {{ xai_model }}
+      </span>
+      {% endif %}
+      <span style="font-size:11px;font-weight:700;color:var(--accent);background:#f0eeff;padding:4px 9px;border-radius:6px">
+        Algorithm: {{ xai_method_name|upper if xai_method_name == 'gradcam' else 'GRAD-CAM++' }}
+      </span>
+    </div>
+    {% endif %}
+  </div>
+
+  {% if xai_vis %}
+  <p style="color:var(--muted);font-size:12px;margin-bottom:18px">
+    Visual heatmaps highlighting the spatial regions that influenced <b>{{ xai_model }}</b>'s predictions. 
+    Warmer colors (red / yellow) denote regions with the strongest positive gradient activations, while cooler colors (blue) had minimal impact.
+  </p>
+
+  <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(280px, 1fr));gap:20px">
+    {% for vis in xai_vis %}
+    <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:14px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <span style="font-size:12px;font-weight:700;color:#1e293b">Class: {{ vis.class_name }}</span>
+        <span style="font-size:10px;font-weight:700;padding:2px 7px;border-radius:4px;background:#dcfce7;color:#15803d">
+          {{ (vis.confidence * 100)|round(1) }}% Conf
+        </span>
+      </div>
+      <div style="display:flex;gap:12px;align-items:center;justify-content:center">
+        <div style="text-align:center;flex:1">
+          <img src="{{ vis.original_base64 }}" alt="{{ vis.class_name }} original" style="width:100%;max-width:140px;height:auto;border-radius:6px;border:1px solid #cbd5e1;display:block;margin:0 auto">
+          <small style="display:block;margin-top:5px;font-size:10px;color:#64748b">Original Sample</small>
+        </div>
+        <div style="text-align:center;flex:1">
+          <img src="{{ vis.heatmap_base64 }}" alt="{{ vis.class_name }} heatmap" style="width:100%;max-width:140px;height:auto;border-radius:6px;border:1px solid #cbd5e1;display:block;margin:0 auto">
+          <small style="display:block;margin-top:5px;font-size:10px;font-weight:700;color:var(--accent)">{{ vis.method }} Overlay</small>
+        </div>
+      </div>
+      <div style="margin-top:10px;padding-top:8px;border-top:1px dashed #e2e8f0;font-size:11px;color:#64748b;display:flex;justify-content:space-between">
+        <span>File: <code>{{ vis.image_name }}</code></span>
+        <span>Pred: <b>{{ vis.predicted_class }}</b></span>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% elif best.xai_note %}
+  <div style="background:#f8fafc;border:1px solid #e2e8f0;border-left:4px solid var(--accent);border-radius:8px;padding:16px">
+    <b style="color:#1e293b;font-size:13px">Explainability Architecture Information</b>
+    <p style="margin-top:4px;color:#64748b;font-size:12px;line-height:1.5">
+      {{ best.xai_note }}
+    </p>
+  </div>
+  {% else %}
+  <div style="background:#f8fafc;border:1px solid #e2e8f0;border-left:4px solid #94a3b8;border-radius:8px;padding:16px">
+    <b style="color:#1e293b;font-size:13px">Explainability Disabled</b>
+    <p style="margin-top:4px;color:#64748b;font-size:12px">
+      Visual attribution heatmaps were not enabled for this run. Enable the <b>Explainable AI</b> toggle during model configuration to generate Grad-CAM / Grad-CAM++ visualizations.
+    </p>
+  </div>
+  {% endif %}
+</div>
+
 <!-- Prediction Responses Table -->
 <div class="panel">
   <div class="panel-title">

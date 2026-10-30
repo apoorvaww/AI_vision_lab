@@ -6,7 +6,9 @@ features, while CNN/transfer-learning models use train-only augmentation and
 class-weighted loss.  Every model is evaluated on files it never trained on.
 """
 
+import base64
 import hashlib
+import io
 import os
 import random
 import time
@@ -160,6 +162,10 @@ class TrialResult:
     generalization_gap: float = 0.0
     training_log: List[str] = field(default_factory=list)
     training_history: List[dict] = field(default_factory=list)
+    xai_enabled: bool = False
+    xai_method: str = "gradcam"
+    xai_visualizations: List[dict] = field(default_factory=list)
+    xai_note: str = ""
 
     def to_dict(self) -> dict:
         return {
@@ -185,6 +191,10 @@ class TrialResult:
             "prediction_sample": self.prediction_sample[:50],
             "confusion_matrix": self.confusion_matrix,
             "class_names": self.class_names,
+            "xai_enabled": self.xai_enabled,
+            "xai_method": self.xai_method,
+            "xai_visualizations": self.xai_visualizations,
+            "xai_note": self.xai_note,
         }
 
 
@@ -222,7 +232,70 @@ def _make_prediction_sample(test_files, preds, encoder):
     ]
 
 
-def _result(name, family, params, split_label, split_ratio, train_files, test_files, y_train, preds, y_test, encoder, start, probs=None, param_count=0, param_count_str=""):
+
+
+def _generate_xai_visualizations(model, test_files, train_files, encoder, target_size, family="dl", method="gradcam"):
+    """Generate Grad-CAM or Grad-CAM++ visualizations for representative class images."""
+    if not HAS_TORCH or model is None or family in ("ml", "ensemble"):
+        return []
+    visualizations = []
+    try:
+        from .xai import gradcam_heatmap_png
+        device = next(model.parameters()).device
+        model.eval()
+
+        for c_idx, c_name in enumerate(encoder.classes_):
+            matching = [p for p, l in test_files if l == c_name]
+            if not matching:
+                matching = [p for p, l in train_files if l == c_name]
+            if not matching:
+                continue
+
+            sample_p = matching[0]
+            try:
+                with Image.open(sample_p) as orig_pil:
+                    orig_rgb = orig_pil.convert("RGB").resize((target_size, target_size))
+                    buf_orig = io.BytesIO()
+                    orig_rgb.save(buf_orig, format="PNG")
+                    orig_b64 = "data:image/png;base64," + base64.b64encode(buf_orig.getvalue()).decode("ascii")
+
+                arr = np.asarray(orig_rgb, dtype=np.float32) / 255.0
+                mean = np.array([0.485, 0.456, 0.406], dtype=np.float32)
+                std = np.array([0.229, 0.224, 0.225], dtype=np.float32)
+                arr = (arr - mean) / std
+                t = torch.tensor(arr.transpose(2, 0, 1), dtype=torch.float32).unsqueeze(0).to(device)
+
+                with torch.no_grad():
+                    logits = model(t)
+                    probs = torch.softmax(logits, dim=1)[0].cpu().numpy()
+                    pred_idx = int(np.argmax(probs))
+                    confidence = float(probs[pred_idx])
+                    pred_label = encoder.inverse_transform([pred_idx])[0]
+
+                cam_bytes = gradcam_heatmap_png(
+                    model, sample_p, class_idx=pred_idx,
+                    image_size=target_size, method=method,
+                    model_family=family
+                )
+                cam_b64 = "data:image/png;base64," + base64.b64encode(cam_bytes).decode("ascii")
+
+                visualizations.append({
+                    "class_name": c_name,
+                    "image_name": os.path.basename(sample_p),
+                    "ground_truth": c_name,
+                    "predicted_class": pred_label,
+                    "confidence": round(confidence, 4),
+                    "method": "Grad-CAM++" if method == "gradcampp" else "Grad-CAM",
+                    "original_base64": orig_b64,
+                    "heatmap_base64": cam_b64,
+                })
+            except Exception:
+                continue
+    except Exception:
+        pass
+    return visualizations
+
+def _result(name, family, params, split_label, split_ratio, train_files, test_files, y_train, preds, y_test, encoder, start, probs=None, param_count=0, param_count_str="", xai_visualizations=None, xai_enabled=False, xai_method="gradcam", xai_note=""):
     p = dict(params)
     train_acc = float(p.pop("_train_accuracy", 0.0))
     training_log = list(p.pop("_training_log", []))
@@ -256,6 +329,10 @@ def _result(name, family, params, split_label, split_ratio, train_files, test_fi
         generalization_gap=max(0.0, train_acc - test_acc),
         training_log=training_log,
         training_history=training_history,
+        xai_enabled=xai_enabled,
+        xai_method=xai_method,
+        xai_visualizations=xai_visualizations or [],
+        xai_note=xai_note,
     )
 
 
@@ -302,7 +379,9 @@ def _classical_result(name, clf, Xtr, ytr, Xte, yte, train_files, test_files, en
         "test_accuracy": float(test_acc),
         "test_f1_macro": float(f1_score(yte, pred, average="macro", zero_division=0)),
     }]
-    return _result(name, "ml", p, split_label, split_ratio, train_files, test_files, ytr, pred, yte, enc, start, probs=probs, param_count=0, param_count_str="Classical ML")
+    xai_en = bool(p.get("xai_enabled", False))
+    xai_nt = "Grad-CAM / Grad-CAM++ heatmaps compute gradients with respect to convolutional feature maps (supported on DL and Hybrid architectures). Classical tabular / HOG baselines do not have conv layers."
+    return _result(name, "ml", p, split_label, split_ratio, train_files, test_files, ytr, pred, yte, enc, start, probs=probs, param_count=0, param_count_str="Classical ML", xai_enabled=xai_en, xai_note=xai_nt)
 
 
 def train_eval_random_forest(train_files, test_files, split_label, split_ratio, params):
@@ -622,7 +701,10 @@ if HAS_TORCH:
         p["_train_accuracy"] = train_acc
         p["_training_log"] = logs
         p["_training_history"] = history
-        return _result(model_name, "dl", p, split_label, split_ratio, train_files, test_files, ytrain, yp, yt, enc, start, probs=probs, param_count=total_p, param_count_str=p_str)
+        xai_en = bool(p.get("xai_enabled", True))
+        xai_meth = str(p.get("xai_method", "gradcam")).lower()
+        xai_vis = _generate_xai_visualizations(model, test_files, tr, enc, target_size, "dl", xai_meth) if xai_en else []
+        return _result(model_name, "dl", p, split_label, split_ratio, train_files, test_files, ytrain, yp, yt, enc, start, probs=probs, param_count=total_p, param_count_str=p_str, xai_visualizations=xai_vis, xai_enabled=xai_en, xai_method=xai_meth)
 
     def train_eval_small_cnn(*args): return _train_cnn(SmallCNN, "SmallCNN", *args, image_size=64) if HAS_TORCH else None
     def train_eval_deep_cnn(*args): return _train_cnn(DeepCNN, "DeepCNN", *args, image_size=96) if HAS_TORCH else None
@@ -815,7 +897,10 @@ if HAS_TORCH and HAS_TORCHVISION:
         p["_train_accuracy"] = train_acc
         p["_training_log"] = logs
         p["_training_history"] = history
-        return _result(name, "dl", p, split_label, split_ratio, train_files, test_files, ytrain, yp, yt, enc, start, probs=probs, param_count=total_p, param_count_str=p_str)
+        xai_en = bool(p.get("xai_enabled", True))
+        xai_meth = str(p.get("xai_method", "gradcam")).lower()
+        xai_vis = _generate_xai_visualizations(model, test_files, tr, enc, size, "dl", xai_meth) if xai_en else []
+        return _result(name, "dl", p, split_label, split_ratio, train_files, test_files, ytrain, yp, yt, enc, start, probs=probs, param_count=total_p, param_count_str=p_str, xai_visualizations=xai_vis, xai_enabled=xai_en, xai_method=xai_meth)
 
     def train_eval_resnet18(*args): return _train_transfer("resnet18", "ResNet18 (transfer)", *args)
     def train_eval_mobilenet(*args): return _train_transfer("mobilenet_v2", "MobileNetV2 (transfer)", *args)
@@ -1079,9 +1164,13 @@ if HAS_TORCH:
         p["_train_accuracy"] = train_acc
         p["_training_log"] = logs
         p["_training_history"] = history
+        xai_en = bool(p.get("xai_enabled", True))
+        xai_meth = str(p.get("xai_method", "gradcam")).lower()
+        xai_vis = _generate_xai_visualizations(model, test_files, tr, enc, target_size, "hybrid", xai_meth) if xai_en else []
         return _result(model_name, "hybrid", p, split_label, split_ratio,
                        train_files, test_files, ytrain, yp, yt, enc, start,
-                       probs=probs, param_count=total_p, param_count_str=p_str)
+                       probs=probs, param_count=total_p, param_count_str=p_str,
+                       xai_visualizations=xai_vis, xai_enabled=xai_en, xai_method=xai_meth)
 
     def train_eval_hybrid_attention(*args):
         return _train_hybrid(HybridAttentionCNN,
@@ -1155,12 +1244,15 @@ def train_eval_ensemble_voting(train_files, test_files, split_label,
                                 "train_accuracy": train_acc,
                                 "test_accuracy": test_acc,
                                 "test_f1_macro": test_f1}]
+    xai_en = bool(p.get("xai_enabled", False))
+    xai_nt = "Grad-CAM / Grad-CAM++ heatmaps compute gradients with respect to convolutional feature maps (supported on DL and Hybrid architectures). Tree/kernel ensembles do not have conv layers."
     return _result("Ensemble Soft Voting", "ensemble", p,
                    split_label, split_ratio,
                    train_files, test_files,
                    ytr, test_preds, yte, enc, start,
                    probs=blended, param_count=0,
-                   param_count_str="3 base classifiers")
+                   param_count_str="3 base classifiers",
+                   xai_enabled=xai_en, xai_note=xai_nt)
 
 
 def train_eval_ensemble_stacking(train_files, test_files, split_label,
@@ -1244,12 +1336,15 @@ def train_eval_ensemble_stacking(train_files, test_files, split_label,
                                 "train_accuracy": train_acc,
                                 "test_accuracy": test_acc,
                                 "test_f1_macro": test_f1}]
+    xai_en = bool(p.get("xai_enabled", False))
+    xai_nt = "Grad-CAM / Grad-CAM++ heatmaps compute gradients with respect to convolutional feature maps (supported on DL and Hybrid architectures). Tree/kernel ensembles do not have conv layers."
     return _result("Ensemble Stacking", "ensemble", p,
                    split_label, split_ratio,
                    train_files, test_files,
                    ytr, test_preds, yte, enc, start,
                    probs=test_probs, param_count=0,
-                   param_count_str="3 base + LR meta")
+                   param_count_str="3 base + LR meta",
+                   xai_enabled=xai_en, xai_note=xai_nt)
 
 
 MODEL_REGISTRY: Dict[str, dict] = {

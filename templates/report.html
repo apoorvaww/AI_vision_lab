@@ -112,7 +112,28 @@
     </table>
   </div>
 
-  <!-- Section 4: Conclusions -->
+  <!-- Section 4: Explainable AI (Grad-CAM & Grad-CAM++) -->
+  {% set xai_vis = best.xai_visualizations if best.xai_visualizations else result.get('xai_visualizations', []) %}
+  {% if xai_vis %}
+  <h3 style="margin-top:28px">4. Explainable AI Visualizations (Grad-CAM / Grad-CAM++)</h3>
+  <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(240px, 1fr));gap:16px;margin-top:12px;margin-bottom:24px">
+    {% for vis in xai_vis %}
+    <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:12px;text-align:center">
+      <div style="display:flex;justify-content:space-between;font-size:11px;font-weight:700;margin-bottom:8px">
+        <span>Class: {{ vis.class_name }}</span>
+        <span style="color:#15803d">{{ (vis.confidence * 100)|round(1) }}% Conf</span>
+      </div>
+      <div style="display:flex;gap:8px;justify-content:center">
+        <img src="{{ vis.original_base64 }}" style="width:110px;height:auto;border-radius:4px;border:1px solid #cbd5e1">
+        <img src="{{ vis.heatmap_base64 }}" style="width:110px;height:auto;border-radius:4px;border:1px solid #cbd5e1">
+      </div>
+      <small style="display:block;margin-top:6px;font-size:10px;color:#64748b">Original vs {{ vis.method }} Overlay</small>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <!-- Section 5: Conclusions -->
   <div class="best-callout">
     <span>Analytical Summary & Conclusions</span>
     <b>{{ best.model_name }} demonstrates the strongest generalization capability</b>
