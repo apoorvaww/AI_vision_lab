@@ -1,0 +1,62 @@
+{% extends 'base.html' %}{% block title %}Upload Dataset — AI VisionLab{% endblock %}{% block content %}
+<div class="page-head">
+  <span class="step">STEP 01</span>
+  <h1>Upload Your Image Dataset</h1>
+  <p>Upload your image classification dataset packaged as a ZIP archive. AI VisionLab will automatically extract, inspect folder structures, validate image integrity, and calculate dataset statistics.</p>
+</div>
+
+<form action="{{ url_for('start_job') }}" method="post" enctype="multipart/form-data" id="upload-form">
+  <div class="upload-layout">
+    <div class="panel">
+      <div style="margin-bottom:16px" class="form-grid">
+        <label>Dataset Display Name (Optional)
+          <input type="text" name="custom_name" placeholder="e.g. Traffic Signs, Shapes Dataset">
+        </label>
+        <label>Computer Vision Task Type
+          <select name="task_type">
+            <option value="classification">Image Classification (Multi-Class)</option>
+            <option value="binary">Binary Classification</option>
+          </select>
+        </label>
+      </div>
+
+      <label class="dropzone" id="dropzone">
+        <input type="file" name="dataset" id="dataset-input" accept=".zip" required>
+        <div class="upload-icon">↑</div>
+        <h3>Drop your dataset ZIP here, or browse</h3>
+        <p id="dropzone-text" data-file>No file selected</p>
+        <div class="format-tags">
+          <span>ZIP ARCHIVE</span>
+          <span>JPG / JPEG</span>
+          <span>PNG</span>
+          <span>WEBP</span>
+          <span>BMP</span>
+        </div>
+      </label>
+
+      <div class="actions end">
+        <button class="btn primary" type="submit" id="submit-btn">Upload & Inspect Dataset →</button>
+      </div>
+    </div>
+
+    <div class="panel info-panel">
+      <span class="eyebrow">SUPPORTED DATASET LAYOUTS</span>
+      <h3>Standard ImageFolder Layout</h3>
+      <p style="margin:8px 0 12px">Zip your images with one subfolder per class label:</p>
+      <div class="code-tree">
+<b>my_dataset.zip</b><br>
+├── class_a/<br>
+│   ├── img01.jpg<br>
+│   └── img02.jpg<br>
+├── class_b/<br>
+│   ├── img03.jpg<br>
+│   └── img04.jpg<br>
+└── class_c/...
+      </div>
+      <p style="margin-top:12px;font-size:11px;color:var(--muted)">
+        💡 <b>Pre-split datasets supported:</b> Archives containing <code>train/</code> and <code>test/</code> or <code>seg_train/</code> and <code>seg_test/</code> splits are recognized automatically.
+      </p>
+    </div>
+  </div>
+</form>
+{% endblock %}

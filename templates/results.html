@@ -1,0 +1,251 @@
+{% extends 'base.html' %}{% block title %}Results & Evaluation — AI VisionLab{% endblock %}{% block content %}
+<div class="page-head">
+  <span class="step">STEP 07</span>
+  <h1>Model Results & Evaluation</h1>
+  <p>{{ job.dataset_name }} · Comprehensive holdout evaluation metrics, learning curves, confusion matrix, and prediction responses for <b>{{ best.model_name }}</b>.</p>
+</div>
+
+<!-- Primary Model Metric Banner -->
+<div class="winner">
+  <div>
+    <span class="eyebrow" style="color:#a5b4fc">EVALUATED MODEL</span>
+    <h2>{{ best.model_name }}</h2>
+    <p>{{ best.split_label }} holdout split · {{ best.param_count_str or 'Trained architecture' }}</p>
+  </div>
+  <div class="winner-metrics">
+    <div><b>{{ (best.expected_accuracy * 100)|round(1) }}%</b><span>Accuracy</span></div>
+    <div><b>{{ (best.expected_precision * 100)|round(1) }}%</b><span>Precision</span></div>
+    <div><b>{{ (best.expected_recall * 100)|round(1) }}%</b><span>Recall</span></div>
+    <div><b>{{ (best.expected_f1_macro * 100)|round(1) }}%</b><span>F1 (Macro)</span></div>
+    <div><b>{{ best.expected_roc_auc|round(3) }}</b><span>ROC-AUC</span></div>
+  </div>
+</div>
+
+<!-- Metrics Overview Cards -->
+<div class="metrics-grid">
+  <div class="metric-card">
+    <span>HOLDOUT ACCURACY</span>
+    <b>{{ (best.expected_accuracy * 100)|round(1) }}%</b>
+    <small>Unseen test images</small>
+  </div>
+  <div class="metric-card">
+    <span>TRAIN ACCURACY</span>
+    <b>{{ (best.train_accuracy * 100)|round(1) }}%</b>
+    <small>Fitting subset</small>
+  </div>
+  <div class="metric-card">
+    <span>GENERALIZATION GAP</span>
+    <b>{{ (best.generalization_gap * 100)|round(1) }}%</b>
+    <small>Train vs holdout delta</small>
+  </div>
+  <div class="metric-card">
+    <span>TOTAL EXPERIMENT RUNTIME</span>
+    <b>{{ result.total_seconds }}s</b>
+    <small>{{ result.num_trials_run }} trial(s) completed</small>
+  </div>
+</div>
+
+<!-- Interactive Visualizations: Learning Curves & ROC Curve -->
+<div class="two-col" style="margin-bottom:20px">
+  <!-- Loss & Accuracy Curves -->
+  <div class="panel">
+    <div class="panel-title">
+      <div>
+        <span class="eyebrow">TRAINING DYNAMICS</span>
+        <h3>Epoch Curves (Loss & Accuracy)</h3>
+      </div>
+      <div style="font-size:10px;display:flex;gap:12px">
+        <span style="color:var(--accent)">● Train Acc</span>
+        <span style="color:var(--success)">● Val Acc</span>
+        <span style="color:#e11d48">● Train Loss</span>
+      </div>
+    </div>
+    {% if best.training_history and best.training_history|length > 1 %}
+    <div style="position:relative;height:210px;width:100%;margin-top:10px">
+      <svg viewBox="0 0 450 200" style="width:100%;height:100%;overflow:visible" id="learning-curve-svg">
+        <!-- Grid lines -->
+        <line x1="40" y1="20" x2="440" y2="20" stroke="#f0f1f5" stroke-dasharray="3"/>
+        <line x1="40" y1="80" x2="440" y2="80" stroke="#f0f1f5" stroke-dasharray="3"/>
+        <line x1="40" y1="140" x2="440" y2="140" stroke="#f0f1f5" stroke-dasharray="3"/>
+        <line x1="40" y1="180" x2="440" y2="180" stroke="#d5d7e0"/>
+        <line x1="40" y1="20" x2="40" y2="180" stroke="#d5d7e0"/>
+        
+        <!-- Y-axis labels -->
+        <text x="32" y="24" font-size="9" fill="#9ca3af" text-anchor="end">1.0</text>
+        <text x="32" y="104" font-size="9" fill="#9ca3af" text-anchor="end">0.5</text>
+        <text x="32" y="184" font-size="9" fill="#9ca3af" text-anchor="end">0.0</text>
+
+        {% set n = best.training_history|length %}
+        {% set x_step = 400 / (n - 1) if n > 1 else 400 %}
+        
+        <!-- Train Accuracy Polyline -->
+        <polyline fill="none" stroke="var(--accent)" stroke-width="2.5" points="
+          {% for h in best.training_history %}
+            {{ 40 + loop.index0 * x_step }},{{ 180 - (h.train_accuracy * 160) }}
+          {% endfor %}
+        "/>
+
+        <!-- Val Accuracy Polyline (if present) -->
+        {% if best.training_history[0].val_accuracy is defined %}
+        <polyline fill="none" stroke="var(--success)" stroke-width="2" stroke-dasharray="4" points="
+          {% for h in best.training_history %}
+            {{ 40 + loop.index0 * x_step }},{{ 180 - ((h.val_accuracy or h.train_accuracy) * 160) }}
+          {% endfor %}
+        "/>
+        {% endif %}
+
+        <!-- Train Loss Polyline (normalized to 0-2 range) -->
+        <polyline fill="none" stroke="#e11d48" stroke-width="1.8" points="
+          {% for h in best.training_history %}
+            {{ 40 + loop.index0 * x_step }},{{ 180 - ([h.train_loss / 2.0, 1.0]|min * 160) }}
+          {% endfor %}
+        "/>
+
+        <!-- Data points -->
+        {% for h in best.training_history %}
+          <circle cx="{{ 40 + loop.index0 * x_step }}" cy="{{ 180 - (h.train_accuracy * 160) }}" r="3.5" fill="var(--accent)"/>
+          <text x="{{ 40 + loop.index0 * x_step }}" y="194" font-size="9" fill="#9ca3af" text-anchor="middle">E{{ h.epoch }}</text>
+        {% endfor %}
+      </svg>
+    </div>
+    {% else %}
+    <div style="padding:40px;text-align:center;color:var(--muted);font-size:12px">
+      Classical ML fit performed directly on feature matrices. Model reached <b>{{ (best.train_accuracy*100)|round(1) }}%</b> training and <b>{{ (best.expected_accuracy*100)|round(1) }}%</b> holdout accuracy.
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- ROC Curve Panel -->
+  <div class="panel">
+    <div class="panel-title">
+      <div>
+        <span class="eyebrow">DISCRIMINATION CAPACITY</span>
+        <h3>Receiver Operating Characteristic (ROC)</h3>
+      </div>
+      <span style="font-size:11px;font-weight:700;color:var(--accent)">AUC = {{ best.expected_roc_auc|round(3) }}</span>
+    </div>
+    <div style="position:relative;height:210px;width:100%;margin-top:10px">
+      <svg viewBox="0 0 300 200" style="width:100%;height:100%;overflow:visible" id="roc-curve-svg">
+        <!-- Axes -->
+        <line x1="40" y1="20" x2="280" y2="20" stroke="#f0f1f5" stroke-dasharray="3"/>
+        <line x1="40" y1="100" x2="280" y2="100" stroke="#f0f1f5" stroke-dasharray="3"/>
+        <line x1="40" y1="180" x2="280" y2="180" stroke="#d5d7e0"/>
+        <line x1="40" y1="20" x2="40" y2="180" stroke="#d5d7e0"/>
+        
+        <!-- Diagonal baseline (chance) -->
+        <line x1="40" y1="180" x2="280" y2="20" stroke="#cbd5e1" stroke-dasharray="4" stroke-width="1.5"/>
+
+        <!-- Y & X labels -->
+        <text x="32" y="24" font-size="9" fill="#9ca3af" text-anchor="end">1.0</text>
+        <text x="32" y="104" font-size="9" fill="#9ca3af" text-anchor="end">0.5</text>
+        <text x="32" y="184" font-size="9" fill="#9ca3af" text-anchor="end">0.0</text>
+        <text x="40" y="194" font-size="9" fill="#9ca3af">0.0</text>
+        <text x="160" y="194" font-size="9" fill="#9ca3af" text-anchor="middle">FPR →</text>
+        <text x="280" y="194" font-size="9" fill="#9ca3af" text-anchor="end">1.0</text>
+
+        {% set fpr = best.roc_curve.get('fpr', [0.0, 1.0]) %}
+        {% set tpr = best.roc_curve.get('tpr', [0.0, 1.0]) %}
+        
+        <!-- ROC Curve Polyline -->
+        <polyline fill="none" stroke="var(--accent)" stroke-width="2.5" points="
+          {% for i in range(fpr|length) %}
+            {{ 40 + (fpr[i] * 240) }},{{ 180 - (tpr[i] * 160) }}
+          {% endfor %}
+        "/>
+      </svg>
+    </div>
+  </div>
+</div>
+
+<!-- Confusion Matrix -->
+<div class="panel" style="margin-bottom:20px">
+  <div class="panel-title">
+    <div>
+      <span class="eyebrow">ERROR ANALYSIS</span>
+      <h3>Confusion Matrix</h3>
+    </div>
+    <span style="font-size:11px;color:var(--muted)">Rows: Ground Truth · Columns: Model Predictions</span>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th style="background:#f8f9fa;font-weight:700">Actual \ Predicted</th>
+          {% for c in best.class_names %}
+          <th style="text-align:center;color:#475569;font-weight:700">{{ c }}</th>
+          {% endfor %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in best.confusion_matrix %}
+        {% set actual_idx = loop.index0 %}
+        {% set row_sum = row|sum %}
+        <tr>
+          <th style="background:#f8f9fa;font-weight:700">{{ best.class_names[actual_idx] }}</th>
+          {% for v in row %}
+            {% set pred_idx = loop.index0 %}
+            {% if actual_idx == pred_idx %}
+              <td style="text-align:center;font-weight:700;background:{% if v > 0 %}#ecfdf5;color:#065f46{% else %}#fff{% endif %}">
+                {{ v }}
+              </td>
+            {% else %}
+              <td style="text-align:center;background:{% if v > 0 %}#fef2f2;color:#b91c1c;font-weight:600{% else %}#fff;color:#94a3b8{% endif %}">
+                {{ v }}
+              </td>
+            {% endif %}
+          {% endfor %}
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <p class="muted" style="margin-top:12px;font-size:11px">
+    Evaluation source: <b>{{ result.evaluation.test_set_source }}</b> · Duplicate images eliminated: {{ result.evaluation.duplicate_files_removed }}.
+  </p>
+</div>
+
+<!-- Prediction Responses Table -->
+<div class="panel">
+  <div class="panel-title">
+    <div>
+      <span class="eyebrow">INSTANCE-LEVEL PREDICTIONS</span>
+      <h3>Holdout Samples and Inference Output</h3>
+    </div>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Image File</th>
+          <th>Ground Truth</th>
+          <th>Predicted Class</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in best.prediction_sample %}
+        <tr>
+          <td><code>{{ row.image }}</code></td>
+          <td>{{ row.actual }}</td>
+          <td><b>{{ row.predicted }}</b></td>
+          <td>
+            {% if row.actual == row.predicted %}
+              <span style="display:inline-block;padding:3px 8px;border-radius:6px;font-size:9px;font-weight:700;background:#dcfce7;color:#15803d">CORRECT</span>
+            {% else %}
+              <span style="display:inline-block;padding:3px 8px;border-radius:6px;font-size:9px;font-weight:700;background:#fee2e2;color:#b91c1c">MISCLASSIFIED</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="actions end" style="margin-top:24px">
+  <a class="btn secondary" href="{{ url_for('models_page', job_id=job_id) }}">← Train Another Model</a>
+  <a class="btn secondary" href="{{ url_for('comparison_page', job_id=job_id) }}">Model Comparison →</a>
+  <a class="btn primary" href="{{ url_for('report_page', job_id=job_id) }}">Experiment Report & Export →</a>
+</div>
+{% endblock %}

@@ -1,0 +1,76 @@
+{% extends 'base.html' %}{% block title %}Training Progress — AI VisionLab{% endblock %}{% block content %}
+<div class="page-head">
+  <span class="step">STEP 06</span>
+  <h1>Model Training in Progress</h1>
+  <p>AI VisionLab is training and evaluating your selected models on background worker threads. Metrics and logs update in real time.</p>
+</div>
+
+<div class="panel training-card">
+  <div class="training-top">
+    <div>
+      <span class="eyebrow">CURRENT EXPERIMENT</span>
+      <h2>{{ job.dataset_name }}</h2>
+      <p id="model-names-display">{{ job.selected_models|join(' · ') }}</p>
+    </div>
+    <div style="text-align:right">
+      <div class="big-percent" id="progress-pct">0%</div>
+      <span id="training-status-badge" style="font-size:10px;text-transform:uppercase;letter-spacing:1px;font-weight:700;color:var(--accent);display:inline-block;margin-top:4px">RUNNING</span>
+    </div>
+  </div>
+
+  <div class="progress-track">
+    <div id="progress-fill" class="progress-fill"></div>
+  </div>
+
+  <div class="progress-meta">
+    <span id="progress-desc">Initializing experiment pipeline…</span>
+    <span id="trial-meta">0 / {{ job.selected_keys|length }} models</span>
+  </div>
+
+  <!-- Real-time Live Metric Counters -->
+  <div class="metrics-grid" style="margin-top:24px;margin-bottom:0">
+    <div class="metric-card">
+      <span>CURRENT EPOCH</span>
+      <b id="live-epoch">—</b>
+      <small id="live-epoch-sub">Epoch progress</small>
+    </div>
+    <div class="metric-card">
+      <span>TRAINING LOSS</span>
+      <b id="live-train-loss">—</b>
+      <small>Cross-Entropy loss</small>
+    </div>
+    <div class="metric-card">
+      <span>TRAIN ACCURACY</span>
+      <b id="live-train-acc">—</b>
+      <small>Batch accuracy</small>
+    </div>
+    <div class="metric-card">
+      <span>ELAPSED / REMAINING</span>
+      <b id="live-time">0s</b>
+      <small id="live-remaining">Estimating…</small>
+    </div>
+  </div>
+
+  <div class="panel-title" style="margin-top:28px;margin-bottom:10px">
+    <div>
+      <span class="eyebrow">EXECUTION CONSOLE</span>
+      <h3 style="font-size:14px">Training Logs</h3>
+    </div>
+  </div>
+  <div class="live-log" id="live-log" style="height:190px;overflow-y:auto">
+    <div><i></i> Initializing training environment…</div>
+  </div>
+
+  <div class="actions end" style="margin-top:20px">
+    <button id="cancel-btn" class="btn danger">Cancel training</button>
+  </div>
+</div>
+
+<script>
+  const JOB_ID = {{ job_id|tojson }};
+  const RESULTS_URL = {{ url_for('results_page', job_id=job_id)|tojson }};
+  const PROGRESS_API = {{ url_for('api_progress', job_id=job_id)|tojson }};
+  const CANCEL_API = {{ url_for('api_cancel', job_id=job_id)|tojson }};
+</script>
+<script src="{{ url_for('static', filename='app.js') }}"></script>
+{% endblock %}

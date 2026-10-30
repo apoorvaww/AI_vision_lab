@@ -1,0 +1,290 @@
+{% extends 'base.html' %}{% block title %}Preprocessing & AI Recommendations — AI VisionLab{% endblock %}{% block content %}
+<div class="page-head">
+  <span class="step">STEP 03</span>
+  <h1>Preprocessing & AI Recommendations</h1>
+  <p>AI VisionLab analyzed your dataset characteristics and formulated optimal preprocessing parameters. You can review, accept, or customize the AI recommendations below before training.</p>
+</div>
+
+<form id="prep-form" action="{{ url_for('save_preprocessing', job_id=job_id) }}" method="post">
+  <div class="panel" style="margin-bottom:20px;background:#f8f9ff;border-color:#d7d9f7">
+    <div class="panel-title">
+      <div>
+        <span class="eyebrow" style="color:var(--accent)">AI DIAGNOSTIC SUMMARY</span>
+        <h3 style="color:#2a2b4a">Dataset Inspection Findings</h3>
+        <p style="margin:6px 0 0;color:#555a6d">{{ recs.summary_verdict }}</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="config-layout">
+    <div class="panel">
+      <div class="panel-title">
+        <div>
+          <span class="eyebrow">PREPROCESSING CONFIGURATION</span>
+          <h3>Configure Pipeline Steps</h3>
+        </div>
+      </div>
+
+      <!-- 1. Resizing -->
+      <div style="margin-bottom:22px;border-bottom:1px solid var(--line);padding-bottom:18px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+          <label style="font-weight:700;font-size:13px">1. Image Resizing</label>
+          <span style="font-size:9px;background:#eeecff;color:var(--accent);padding:4px 8px;border-radius:6px;font-weight:700">AI Recommended: {{ recs.resizing.recommended_size }} × {{ recs.resizing.recommended_size }}</span>
+        </div>
+        <p style="font-size:11px;color:var(--muted);margin:0 0 10px">{{ recs.resizing.rationale }}</p>
+        <div class="form-grid">
+          <label>Target Resolution
+            <select name="image_size" id="image-size-select">
+              <option value="64" {% if recs.resizing.recommended_size == 64 %}selected{% endif %}>64 × 64 px (Fast / Low Memory)</option>
+              <option value="96" {% if recs.resizing.recommended_size == 96 %}selected{% endif %}>96 × 96 px (Balanced Default)</option>
+              <option value="128" {% if recs.resizing.recommended_size == 128 %}selected{% endif %}>128 × 128 px (Higher Fidelity)</option>
+              <option value="224" {% if recs.resizing.recommended_size == 224 %}selected{% endif %}>224 × 224 px (Full ImageNet Scale)</option>
+            </select>
+          </label>
+        </div>
+      </div>
+
+      <!-- 2. Normalization -->
+      <div style="margin-bottom:22px;border-bottom:1px solid var(--line);padding-bottom:18px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+          <label style="font-weight:700;font-size:13px">2. Color Normalization</label>
+          <span style="font-size:9px;background:#eeecff;color:var(--accent);padding:4px 8px;border-radius:6px;font-weight:700">AI Recommended: ImageNet Standard</span>
+        </div>
+        <p style="font-size:11px;color:var(--muted);margin:0 0 10px">{{ recs.normalization.rationale }}</p>
+        <div class="form-grid">
+          <label>Normalization Scheme
+            <select name="normalization">
+              <option value="imagenet" selected>ImageNet (Mean: [0.485, 0.456, 0.406], Std: [0.229, 0.224, 0.225])</option>
+              <option value="minmax">Min-Max Scaling [0.0, 1.0]</option>
+              <option value="none">None (Raw [0, 255])</option>
+            </select>
+          </label>
+        </div>
+      </div>
+
+      <!-- 3. AI-Recommended Augmentation -->
+      <div style="margin-bottom:22px;border-bottom:1px solid var(--line);padding-bottom:18px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+          <label style="font-weight:700;font-size:13px">3. AI-Recommended Data Augmentation</label>
+          <span style="font-size:9px;background:#e6f9f0;color:var(--success);padding:4px 8px;border-radius:6px;font-weight:700">Impact: {{ recs.augmentation.level }}</span>
+        </div>
+        <p style="font-size:11px;color:var(--muted);margin:0 0 10px">{{ recs.augmentation.rationale }}</p>
+        
+        <!-- Master Toggle -->
+        <div style="margin-bottom:12px;background:#f5f6fe;padding:10px 12px;border-radius:8px;border:1px solid #e0e3fb">
+          <label style="display:flex;align-items:center;gap:10px;font-size:12px;font-weight:700;cursor:pointer">
+            <input type="checkbox" name="augmentation_enabled" id="master-aug-toggle" value="true" {% if job.augmentation_enabled %}checked{% endif %}>
+            <span>Enable train-time data augmentation pipeline</span>
+          </label>
+        </div>
+
+        <!-- Granular Technique Customization -->
+        <div id="aug-techniques-container" style="display:flex;flex-direction:column;gap:10px;margin-left:4px">
+          {% set tech = recs.augmentation.techniques %}
+          
+          <!-- Horizontal Flip -->
+          <div style="border:1px solid var(--line);border-radius:8px;padding:10px 12px;background:#fff">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer;font-weight:600">
+                <input type="checkbox" name="aug_horizontal_flip" class="aug-sub-control" value="true" {% if aug_config.get('horizontal_flip', tech.horizontal_flip.recommended) %}checked{% endif %}>
+                <span>{{ tech.horizontal_flip.name }}</span>
+              </label>
+              <span style="font-size:9px;background:#eeecff;color:var(--accent);padding:2px 6px;border-radius:4px;font-weight:700">{{ tech.horizontal_flip.badge }}</span>
+            </div>
+            <p style="font-size:10px;color:var(--muted);margin:4px 0 0 24px">{{ tech.horizontal_flip.rationale }}</p>
+          </div>
+
+          <!-- Vertical Flip -->
+          <div style="border:1px solid var(--line);border-radius:8px;padding:10px 12px;background:#fff">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer;font-weight:600">
+                <input type="checkbox" name="aug_vertical_flip" class="aug-sub-control" value="true" {% if aug_config.get('vertical_flip', tech.vertical_flip.recommended) %}checked{% endif %}>
+                <span>{{ tech.vertical_flip.name }}</span>
+              </label>
+              <span style="font-size:9px;background:#fff8ea;color:#854d0e;padding:2px 6px;border-radius:4px;font-weight:700">{{ tech.vertical_flip.badge }}</span>
+            </div>
+            <p style="font-size:10px;color:var(--muted);margin:4px 0 0 24px">{{ tech.vertical_flip.rationale }}</p>
+          </div>
+
+          <!-- Random Rotation -->
+          <div style="border:1px solid var(--line);border-radius:8px;padding:10px 12px;background:#fff">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer;font-weight:600">
+                <input type="checkbox" name="aug_random_rotation" class="aug-sub-control" value="true" {% if aug_config.get('random_rotation', tech.random_rotation.recommended) %}checked{% endif %}>
+                <span>Random Angular Rotation</span>
+              </label>
+              <div style="display:flex;align-items:center;gap:6px">
+                <select name="aug_rotation_deg" class="aug-sub-control" style="font-size:11px;padding:2px 6px;border-radius:4px">
+                  <option value="10" {% if aug_config.get('rotation_deg', tech.random_rotation.degree) == 10 %}selected{% endif %}>±10°</option>
+                  <option value="15" {% if aug_config.get('rotation_deg', tech.random_rotation.degree) == 15 %}selected{% endif %}>±15°</option>
+                  <option value="30" {% if aug_config.get('rotation_deg', tech.random_rotation.degree) == 30 %}selected{% endif %}>±30°</option>
+                  <option value="45" {% if aug_config.get('rotation_deg', tech.random_rotation.degree) == 45 %}selected{% endif %}>±45°</option>
+                </select>
+                <span style="font-size:9px;background:#eeecff;color:var(--accent);padding:2px 6px;border-radius:4px;font-weight:700">{{ tech.random_rotation.badge }}</span>
+              </div>
+            </div>
+            <p style="font-size:10px;color:var(--muted);margin:4px 0 0 24px">{{ tech.random_rotation.rationale }}</p>
+          </div>
+
+          <!-- Color Jitter -->
+          <div style="border:1px solid var(--line);border-radius:8px;padding:10px 12px;background:#fff">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer;font-weight:600">
+                <input type="checkbox" name="aug_color_jitter" class="aug-sub-control" value="true" {% if aug_config.get('color_jitter', tech.color_jitter.recommended) %}checked{% endif %}>
+                <span>{{ tech.color_jitter.name }}</span>
+              </label>
+              <span style="font-size:9px;background:#eeecff;color:var(--accent);padding:2px 6px;border-radius:4px;font-weight:700">{{ tech.color_jitter.badge }}</span>
+            </div>
+            <p style="font-size:10px;color:var(--muted);margin:4px 0 0 24px">{{ tech.color_jitter.rationale }}</p>
+          </div>
+
+          <!-- Random Resized Crop -->
+          <div style="border:1px solid var(--line);border-radius:8px;padding:10px 12px;background:#fff">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer;font-weight:600">
+                <input type="checkbox" name="aug_random_crop" class="aug-sub-control" value="true" {% if aug_config.get('random_crop', tech.random_crop.recommended) %}checked{% endif %}>
+                <span>{{ tech.random_crop.name }}</span>
+              </label>
+              <span style="font-size:9px;background:#eeecff;color:var(--accent);padding:2px 6px;border-radius:4px;font-weight:700">{{ tech.random_crop.badge }}</span>
+            </div>
+            <p style="font-size:10px;color:var(--muted);margin:4px 0 0 24px">{{ tech.random_crop.rationale }}</p>
+          </div>
+
+          <!-- Gaussian Blur -->
+          <div style="border:1px solid var(--line);border-radius:8px;padding:10px 12px;background:#fff">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer;font-weight:600">
+                <input type="checkbox" name="aug_gaussian_blur" class="aug-sub-control" value="true" {% if aug_config.get('gaussian_blur', tech.gaussian_blur.recommended) %}checked{% endif %}>
+                <span>{{ tech.gaussian_blur.name }}</span>
+              </label>
+              <span style="font-size:9px;background:#f1f5f9;color:#64748b;padding:2px 6px;border-radius:4px;font-weight:700">{{ tech.gaussian_blur.badge }}</span>
+            </div>
+            <p style="font-size:10px;color:var(--muted);margin:4px 0 0 24px">{{ tech.gaussian_blur.rationale }}</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- 4. Class Balancing -->
+      <div style="margin-bottom:22px;border-bottom:1px solid var(--line);padding-bottom:18px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+          <label style="font-weight:700;font-size:13px">4. Class Balancing</label>
+          <span style="font-size:9px;background:#{% if recs.class_balancing.recommended %}fff1f3;color:var(--danger){% else %}eeecff;color:var(--accent){% endif %};padding:4px 8px;border-radius:6px;font-weight:700">Imbalance Ratio: {{ recs.class_balancing.imbalance_ratio }}:1</span>
+        </div>
+        <p style="font-size:11px;color:var(--muted);margin:0 0 10px">{{ recs.class_balancing.rationale }}</p>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer">
+            <input type="checkbox" name="class_balancing_enabled" value="true" {% if recs.class_balancing.recommended %}checked{% endif %}>
+            <b>Apply Weighted Sampling & Class-Weighted Loss</b>
+          </label>
+        </div>
+      </div>
+
+      <!-- 5. Split Ratio -->
+      <div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+          <label style="font-weight:700;font-size:13px">5. Train / Holdout Split</label>
+          <span style="font-size:9px;background:#eeecff;color:var(--accent);padding:4px 8px;border-radius:6px;font-weight:700">AI Suggestion: {{ recs.split.label }}</span>
+        </div>
+        <p style="font-size:11px;color:var(--muted);margin:0 0 10px">{{ recs.split.rationale }}</p>
+        <div class="split-options">
+          {% if recs.split.has_predefined_test %}
+          <label><input type="radio" name="split_ratio" value="1.0" checked><span>Use Predefined Test Split ({{ summary.test_images }} images)</span></label>
+          {% else %}
+          <label><input type="radio" name="split_ratio" value="0.7" {% if recs.split.recommended_ratio == 0.7 %}checked{% endif %}><span>70% Train / 30% Holdout Test</span></label>
+          <label><input type="radio" name="split_ratio" value="0.8" {% if recs.split.recommended_ratio == 0.8 %}checked{% endif %}><span>80% Train / 20% Holdout Test</span></label>
+          <label><input type="radio" name="split_ratio" value="0.9" {% if recs.split.recommended_ratio == 0.9 %}checked{% endif %}><span>90% Train / 10% Holdout Test</span></label>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <!-- Visual Before & After Preview with Live Update -->
+    <div class="panel">
+      <div class="panel-title">
+        <div>
+          <span class="eyebrow">VISUAL INSPECTION</span>
+          <h3>Before & After Preprocessing</h3>
+        </div>
+        <button type="button" id="refresh-preview-btn" class="btn secondary" style="font-size:10px;padding:4px 8px">↻ Re-sample</button>
+      </div>
+      <p style="font-size:11px;color:var(--muted);margin:0 0 15px">Interactive preview of a sample image before and after your selected preprocessing & augmentation transforms.</p>
+      
+      {% if sample_image %}
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;text-align:center">
+        <div style="background:#fafbfe;border:1px solid var(--line);border-radius:10px;padding:12px">
+          <span style="font-size:10px;color:var(--muted);display:block;margin-bottom:6px">ORIGINAL (NATIVE)</span>
+          <img src="{{ url_for('dataset_image', job_id=job_id, filename=sample_image.relpath) }}" style="width:100%;height:130px;object-fit:contain;background:#eee;border-radius:6px">
+          <small style="display:block;margin-top:6px;font-size:10px;color:var(--muted)">{{ characteristics.avg_width }} × {{ characteristics.avg_height }} px</small>
+        </div>
+        <div style="background:#fafbfe;border:1px solid var(--line);border-radius:10px;padding:12px">
+          <span style="font-size:10px;color:var(--accent);font-weight:700;display:block;margin-bottom:6px">TRANSFORMED & AUGMENTED</span>
+          <img id="preview-transformed-img" src="{{ url_for('preview_transform', job_id=job_id, filename=sample_image.relpath) }}" style="width:100%;height:130px;object-fit:contain;background:#eee;border-radius:6px">
+          <small id="preview-resolution-tag" style="display:block;margin-top:6px;font-size:10px;color:var(--accent)">{{ recs.resizing.recommended_size }} × {{ recs.resizing.recommended_size }} px · Norm</small>
+        </div>
+      </div>
+      {% endif %}
+
+      <div style="margin-top:20px;padding:14px;background:#f5f6fa;border-radius:10px;font-size:11px;line-height:1.6;color:#555">
+        <b>💡 Why this matters:</b> Deep learning architectures require uniformly shaped input tensors with standardized zero-mean unit-variance distribution. Active augmentations (flips, rotations, jitter) artificially expand dataset diversity and prevent over-fitting.
+      </div>
+    </div>
+  </div>
+
+  <div class="actions end">
+    <a class="btn secondary" href="{{ url_for('preview_page', job_id=job_id) }}">← Back to Preview</a>
+    <button class="btn primary" type="submit">Apply & Continue to Model Selection →</button>
+  </div>
+</form>
+
+{% if sample_image %}
+<script>
+(function() {
+  var baseUrl = "{{ url_for('preview_transform', job_id=job_id, filename=sample_image.relpath) }}";
+  var previewImg = document.getElementById("preview-transformed-img");
+  var sizeSelect = document.getElementById("image-size-select");
+  var masterToggle = document.getElementById("master-aug-toggle");
+  var resTag = document.getElementById("preview-resolution-tag");
+  var refreshBtn = document.getElementById("refresh-preview-btn");
+
+  function updatePreview() {
+    if (!previewImg) return;
+    var sz = sizeSelect ? sizeSelect.value : 96;
+    var enabled = masterToggle ? masterToggle.checked : true;
+    
+    var hflip = document.querySelector('input[name="aug_horizontal_flip"]')?.checked;
+    var vflip = document.querySelector('input[name="aug_vertical_flip"]')?.checked;
+    var rot = document.querySelector('input[name="aug_random_rotation"]')?.checked;
+    var rotDeg = document.querySelector('select[name="aug_rotation_deg"]')?.value || 12;
+    var jitter = document.querySelector('input[name="aug_color_jitter"]')?.checked;
+    var crop = document.querySelector('input[name="aug_random_crop"]')?.checked;
+    var blur = document.querySelector('input[name="aug_gaussian_blur"]')?.checked;
+
+    var params = new URLSearchParams({
+      size: sz,
+      enabled: enabled ? 'true' : 'false',
+      hflip: hflip ? 'true' : 'false',
+      vflip: vflip ? 'true' : 'false',
+      rot: rot ? 'true' : 'false',
+      rot_deg: rotDeg,
+      jitter: jitter ? 'true' : 'false',
+      crop: crop ? 'true' : 'false',
+      blur: blur ? 'true' : 'false',
+      _t: Date.now()
+    });
+
+    previewImg.src = baseUrl + '?' + params.toString();
+    if (resTag) {
+      resTag.textContent = sz + ' × ' + sz + ' px' + (enabled ? ' · Augmented' : ' · Base');
+    }
+  }
+
+  document.querySelectorAll('.aug-sub-control, #master-aug-toggle, #image-size-select').forEach(function(el) {
+    el.addEventListener('change', updatePreview);
+  });
+  if (refreshBtn) {
+    refreshBtn.addEventListener('click', updatePreview);
+  }
+})();
+</script>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>{% block title %}AI VisionLab{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+<div class="app-shell">
+  <aside class="sidebar">
+    <a class="brand" href="{{ url_for('home') }}">
+      <span class="brand-icon">✦</span>
+      <span>AI VisionLab</span>
+    </a>
+    <div class="side-caption">COMPUTER VISION LAB</div>
+    <nav>
+      <a class="nav-item {% if active=='dashboard' %}active{% endif %}" href="{{ url_for('home') }}">⌂ <span>Dashboard</span></a>
+      
+      <div class="nav-label">DATASET</div>
+      <a class="nav-item {% if active=='upload' %}active{% endif %}" href="{{ url_for('upload_page') }}">＋ <span>Upload Dataset</span></a>
+      {% if job_id %}
+      <a class="nav-item {% if active=='preview' %}active{% endif %}" href="{{ url_for('preview_page', job_id=job_id) }}">▦ <span>Dataset Preview</span></a>
+      {% else %}
+      <span class="nav-item disabled">▦ <span>Dataset Preview</span></span>
+      {% endif %}
+
+      <div class="nav-label">PREPARATION</div>
+      {% if job_id %}
+      <a class="nav-item {% if active=='preprocessing' %}active{% endif %}" href="{{ url_for('preprocessing_page', job_id=job_id) }}">◈ <span>AI Preprocessing</span></a>
+      {% else %}
+      <span class="nav-item disabled">◈ <span>AI Preprocessing</span></span>
+      {% endif %}
+
+      <div class="nav-label">MODELS</div>
+      {% if job_id %}
+      <a class="nav-item {% if active=='models' %}active{% endif %}" href="{{ url_for('models_page', job_id=job_id) }}">◇ <span>Model Selection</span></a>
+      <a class="nav-item {% if active=='config' %}active{% endif %}" href="{{ url_for('config_page', job_id=job_id) }}">⚙ <span>Configuration</span></a>
+      {% else %}
+      <span class="nav-item disabled">◇ <span>Model Selection</span></span>
+      <span class="nav-item disabled">⚙ <span>Configuration</span></span>
+      {% endif %}
+
+      <div class="nav-label">TRAINING</div>
+      {% if job_id %}
+      <a class="nav-item {% if active=='training' %}active{% endif %}" href="{{ url_for('processing_page', job_id=job_id) }}">◷ <span>Training Progress</span></a>
+      {% else %}
+      <span class="nav-item disabled">◷ <span>Training Progress</span></span>
+      {% endif %}
+
+      <div class="nav-label">EVALUATION</div>
+      {% if job_id %}
+      <a class="nav-item {% if active=='results' %}active{% endif %}" href="{{ url_for('results_page', job_id=job_id) }}">◉ <span>Results & Curves</span></a>
+      <a class="nav-item {% if active=='comparison' %}active{% endif %}" href="{{ url_for('comparison_page', job_id=job_id) }}">⇄ <span>Model Comparison</span></a>
+      <a class="nav-item {% if active=='report' %}active{% endif %}" href="{{ url_for('report_page', job_id=job_id) }}">▤ <span>Reports & Export</span></a>
+      {% else %}
+      <span class="nav-item disabled">◉ <span>Results & Curves</span></span>
+      <span class="nav-item disabled">⇄ <span>Model Comparison</span></span>
+      <span class="nav-item disabled">▤ <span>Reports & Export</span></span>
+      {% endif %}
+    </nav>
+    <div class="sidebar-bottom">
+      <div class="user-chip">
+        <div class="avatar">VL</div>
+        <div><b>VisionLab User</b><span>Active Session</span></div>
+      </div>
+    </div>
+  </aside>
+
+  <main class="main-area">
+    <header class="topbar">
+      <div>
+        <span class="eyebrow">AI-POWERED COMPUTER VISION</span>
+        {% block heading %}{% endblock %}
+      </div>
+      <div class="top-actions">
+        <span class="status-dot"></span> System Ready
+      </div>
+    </header>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <div class="flash-stack">
+          {% for category, message in messages %}
+            <div class="flash {{ category }}">{{ message }}</div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
+
+    <section class="content">
+      {% block content %}{% endblock %}
+    </section>
+  </main>
+</div>
+</body>
+</html>

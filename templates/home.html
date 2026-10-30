@@ -1,0 +1,66 @@
+{% extends 'base.html' %}{% block title %}AI VisionLab — Automated AI Model Evaluation Platform{% endblock %}{% block content %}
+<section class="hero-card">
+  <div class="hero-copy">
+    <span class="pill">AUTOMATED COMPUTER VISION PLATFORM</span>
+    <h1>Train, evaluate and<br><em>compare</em> deep learning vision models.</h1>
+    <p>AI VisionLab is an end-to-end computer vision laboratory for image classification. Upload datasets, receive AI-assisted preprocessing recommendations, train modern deep learning and transfer learning architectures (CNN, ResNet, VGG16, EfficientNet, MobileNet), inspect real-time progress, evaluate confusion matrices and ROC curves, and export comprehensive laboratory reports.</p>
+    <div class="actions">
+      <a class="btn primary" href="{{ url_for('upload_page') }}">Get Started <span>→</span></a>
+      <a class="btn secondary" href="#features">Learn More</a>
+    </div>
+  </div>
+  <div class="hero-art">
+    <div class="orb"></div>
+    <div class="scan-card">
+      <span>AI VISIONLAB</span>
+      <b>Data → AI Prep → Models → Reports</b>
+      <div class="mini-bars">
+        <i></i><i></i><i></i><i></i>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="features" class="section">
+  <div class="section-title">
+    <div>
+      <span class="eyebrow">COMPLETE WORKFLOW</span>
+      <h2>A Guided Journey From Raw Pixels to Empirical Insights</h2>
+    </div>
+    <p>Every step of the computer vision lifecycle is automated, transparent, and reproducible.</p>
+  </div>
+  
+  <div class="feature-grid">
+    <article>
+      <span>01</span>
+      <h3>Dataset Upload & Auto-Detection</h3>
+      <p>Drag-and-drop or select dataset ZIP files. VisionLab automatically discovers class structures, handles single wrappers, flags corrupt images, and verifies split layouts.</p>
+    </article>
+    <article>
+      <span>02</span>
+      <h3>AI Preprocessing Recommendations</h3>
+      <p>Data-driven recommendations for resizing, ImageNet normalization, augmentation, and class balancing based on measured sample size, resolution skew, and class balance.</p>
+    </article>
+    <article>
+      <span>03</span>
+      <h3>Diverse Deep Learning Models</h3>
+      <p>Train Small CNN, Deep CNN, ResNet18, VGG16, EfficientNet-B0, MobileNetV2, or classical ML baselines (Random Forest, XGBoost, SVM) on identical holdout splits.</p>
+    </article>
+    <article>
+      <span>04</span>
+      <h3>Live Training Progress</h3>
+      <p>Monitor real-time training loss, validation accuracy, epoch progression, and detailed PyTorch execution logs with non-blocking background workers.</p>
+    </article>
+    <article>
+      <span>05</span>
+      <h3>Empirical Holdout Evaluation</h3>
+      <p>Genuine evaluation metrics on unseen holdouts: Multiclass Accuracy, Precision, Recall, F1-Score, ROC-AUC, styled Confusion Matrix, and epoch loss curves.</p>
+    </article>
+    <article>
+      <span>06</span>
+      <h3>Model Comparison & Export</h3>
+      <p>Compare multiple trained architectures side-by-side on identical benchmarks. Export downloadable PDF reports, CSV metrics, and reproducible Jupyter Notebooks.</p>
+    </article>
+  </div>
+</section>
+{% endblock %}

@@ -1,0 +1,128 @@
+{% extends 'base.html' %}{% block title %}Model Comparison — AI VisionLab{% endblock %}{% block content %}
+<div class="page-head">
+  <span class="step">STEP 08</span>
+  <h1>Model Comparison & Evaluation Leaderboard</h1>
+  <p>Side-by-side empirical performance comparison across all architectures trained on <b>{{ job.dataset_name }}</b>. All metrics represent genuine holdout generalization on identical data splits.</p>
+</div>
+
+<!-- Comparison Leaderboard Table -->
+<div class="panel" style="margin-bottom:20px">
+  <div class="panel-title">
+    <div>
+      <span class="eyebrow">EMPIRICAL BENCHMARKS</span>
+      <h3>Trained Models Performance Matrix</h3>
+    </div>
+    <span style="font-size:11px;color:var(--muted)">Ranked by {{ result.search_metric|replace('_', ' ')|upper }}</span>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Model Architecture</th>
+          <th>Family</th>
+          <th>Holdout Accuracy</th>
+          <th>Precision (Macro)</th>
+          <th>Recall (Macro)</th>
+          <th>F1 (Macro)</th>
+          <th>ROC-AUC</th>
+          <th>Parameters</th>
+          <th>Train Time</th>
+          <th>Gen Gap</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in leaderboard %}
+        <tr {% if loop.first %}style="background:#fcfaff;font-weight:600"{% endif %}>
+          <td>
+            <b>{{ row.model_name }}</b>
+            {% if loop.first %}<span style="margin-left:6px;font-size:9px;background:#eeecff;color:var(--accent);padding:2px 6px;border-radius:4px">Top Score</span>{% endif %}
+          </td>
+          <td><span style="font-size:9px;padding:3px 7px;border-radius:5px;background:#f1f5f9;color:#475569;text-transform:uppercase">{{ row.model_family }}</span></td>
+          <td><b>{{ (row.accuracy * 100)|round(1) }}%</b></td>
+          <td>{{ (row.precision_macro * 100)|round(1) }}%</td>
+          <td>{{ (row.recall_macro * 100)|round(1) }}%</td>
+          <td><b>{{ (row.f1_macro * 100)|round(1) }}%</b></td>
+          <td>{{ row.roc_auc|round(3) }}</td>
+          <td><small>{{ row.param_count_str or 'N/A' }}</small></td>
+          <td>{{ row.train_seconds }}s</td>
+          <td><small>{{ (row.generalization_gap * 100)|round(1) }}%</small></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Visual Comparison Charts -->
+<div class="two-col" style="margin-bottom:20px">
+  <!-- Accuracy Comparison Bars -->
+  <div class="panel">
+    <div class="panel-title">
+      <div>
+        <span class="eyebrow">ACCURACY COMPARISON</span>
+        <h3>Holdout Test Accuracy</h3>
+      </div>
+    </div>
+    {% for row in leaderboard %}
+    <div class="dist-row">
+      <div>
+        <b>{{ row.model_name }}</b>
+        <span>{{ (row.accuracy * 100)|round(1) }}%</span>
+      </div>
+      <div class="bar">
+        <i style="width:{{ row.accuracy * 100 }}%;background:var(--accent)"></i>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- F1-Score Comparison Bars -->
+  <div class="panel">
+    <div class="panel-title">
+      <div>
+        <span class="eyebrow">BALANCED CLASSIFICATION</span>
+        <h3>Macro F1-Score</h3>
+      </div>
+    </div>
+    {% for row in leaderboard %}
+    <div class="dist-row">
+      <div>
+        <b>{{ row.model_name }}</b>
+        <span>{{ (row.f1_macro * 100)|round(1) }}%</span>
+      </div>
+      <div class="bar">
+        <i style="width:{{ row.f1_macro * 100 }}%;background:var(--success)"></i>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
+<!-- Architectural Trade-off Summary -->
+<div class="panel">
+  <div class="panel-title">
+    <div>
+      <span class="eyebrow">ARCHITECTURAL ANALYSIS</span>
+      <h3>Observations & Trade-Offs</h3>
+    </div>
+  </div>
+  <div style="font-size:12px;line-height:1.7;color:#475569">
+    <p>
+      • <b>Top Performer:</b> <b>{{ best.model_name }}</b> achieved the highest evaluation score with <b>{{ (best.expected_accuracy*100)|round(1) }}% accuracy</b> and <b>{{ (best.expected_f1_macro*100)|round(1) }}% macro F1</b> on holdout data.
+    </p>
+    <p>
+      • <b>Capacity vs Overfitting:</b> The measured generalization gap is <b>{{ (best.generalization_gap*100)|round(1) }} percentage points</b> between training and holdout validation sets.
+    </p>
+    <p>
+      • <b>Resource Efficiency:</b> Transfer-learning architectures leverage pre-trained representations to maximize accuracy per epoch, while classical ML baselines offer near-instant training on hand-crafted HOG features.
+    </p>
+  </div>
+</div>
+
+<div class="actions end" style="margin-top:24px">
+  <a class="btn secondary" href="{{ url_for('results_page', job_id=job_id) }}">← Back to Results</a>
+  <a class="btn secondary" href="{{ url_for('models_page', job_id=job_id) }}">Train More Models</a>
+  <a class="btn primary" href="{{ url_for('report_page', job_id=job_id) }}">Generate Full Report →</a>
+</div>
+{% endblock %}

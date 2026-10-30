@@ -1,0 +1,16 @@
+# Core (required)
+numpy>=1.24
+Pillow>=10.0
+scikit-learn>=1.3
+PyYAML>=6.0
+Flask>=3.0
+Werkzeug>=3.0
+
+# Optional -- pipeline gracefully skips these model families if not installed.
+# torch is required for every deep-learning model (SmallCNN, DeepCNN); torchvision
+# is additionally required for the transfer-learning models (ResNet18, MobileNetV2).
+xgboost>=2.0
+torch>=2.1
+torchvision>=0.16
+
+reportlab>=4.0

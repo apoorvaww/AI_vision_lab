@@ -1,0 +1,57 @@
+{% extends 'base.html' %}{% block title %}Dataset Preview — AI VisionLab{% endblock %}{% block content %}
+<div class="page-head"><span class="step">STEP 02</span><h1>Dataset preview</h1><p>Review what VisionLab discovered about your dataset before configuring preprocessing and models.</p></div>
+
+<div class="stats-grid">
+  <div class="stat-card"><span>Total valid images</span><b>{{ summary.num_valid_images }}</b></div>
+  <div class="stat-card"><span>Classes detected</span><b>{{ summary.num_classes }}</b></div>
+  <div class="stat-card"><span>Resolution (avg)</span><b>{{ characteristics.avg_width or 96 }} × {{ characteristics.avg_height or 96 }}</b></div>
+  <div class="stat-card"><span>Balance ratio</span><b>{{ characteristics.imbalance_ratio or 1.0 }}:1</b></div>
+</div>
+
+<div class="panel" style="margin-bottom:18px">
+  <div class="panel-title">
+    <div>
+      <span class="eyebrow">STRUCTURE & FORMAT</span>
+      <h3>{{ summary.dataset_format }} · {% for fmt, cnt in characteristics.formats.items() %}{{ fmt }}{% if not loop.last %}, {% endif %}{% endfor %}</h3>
+      <p style="margin:6px 0 0;color:#64748b">
+        VisionLab detected {{ summary.train_images }} training images across {{ summary.num_classes }} classes{% if summary.has_test_split %}, an explicit holdout test set with {{ summary.test_images }} images{% endif %}{% if summary.has_prediction_split %}, and {{ summary.prediction_images }} images in an unlabeled prediction folder (<code>seg_pred/</code>){% endif %}.
+      </p>
+    </div>
+  </div>
+  {% if summary.has_prediction_split %}
+    <div class="notice" style="margin-top:12px">ℹ️ <b>Prediction set detected:</b> {{ summary.prediction_images }} images in <code>seg_pred/</code>. These images are unlabeled and will not be treated as a training class.</div>
+  {% endif %}
+  {% if characteristics.is_imbalanced %}
+    <div class="notice" style="margin-top:12px;background:#fff8ea;border-color:#fde68a;color:#854d0e">⚠️ <b>Class imbalance detected:</b> Ratio is {{ characteristics.imbalance_ratio }}:1 between largest class ({{ characteristics.majority_class }}) and smallest class ({{ characteristics.minority_class }}). AI Preprocessing will suggest balancing techniques.</div>
+  {% endif %}
+</div>
+
+<div class="two-col">
+  <div class="panel">
+    <div class="panel-title"><div><span class="eyebrow">CLASS DISTRIBUTION</span><h3>Samples per class</h3></div></div>
+    {% for name, count in class_counts.items() %}
+    <div class="dist-row">
+      <div><b>{{ name }}</b><span>{{ count }} images ({{ ((count / summary.num_valid_images) * 100)|round(1) }}%)</span></div>
+      <div class="bar"><i style="width:{{ (count / max_count * 100) if max_count else 0 }}%"></i></div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <div class="panel">
+    <div class="panel-title"><div><span class="eyebrow">SAMPLE IMAGES</span><h3>Class examples</h3></div></div>
+    <div class="sample-grid">
+      {% for item in samples %}
+      <div class="sample">
+        <img src="{{ url_for('dataset_image', job_id=job_id, filename=item.relpath) }}" alt="{{ item.label }}">
+        <span>{{ item.label }}</span>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+
+<div class="actions end">
+  <a class="btn secondary" href="{{ url_for('upload_page') }}">← Replace dataset</a>
+  <a class="btn primary" href="{{ url_for('preprocessing_page', job_id=job_id) }}">Continue to Preprocessing & Recommendations →</a>
+</div>
+{% endblock %}

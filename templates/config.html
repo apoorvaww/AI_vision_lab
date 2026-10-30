@@ -1,0 +1,95 @@
+{% extends 'base.html' %}{% block title %}Model Configuration — AI VisionLab{% endblock %}{% block content %}
+<div class="page-head">
+  <span class="step">STEP 05</span>
+  <h1>Configure Model Training</h1>
+  <p>Fine-tune hyperparameters and validation strategy for the selected architectures. Sensible defaults have been pre-populated based on your dataset and preprocessing recommendations.</p>
+</div>
+
+<form action="{{ url_for('train_job', job_id=job_id) }}" method="post" id="config-form">
+  <input type="hidden" name="job_id" value="{{ job_id }}">
+  {% for key in selected %}
+  <input type="hidden" name="models" value="{{ key }}">
+  {% endfor %}
+
+  <div class="config-layout">
+    <div class="panel">
+      <div class="panel-title">
+        <div>
+          <span class="eyebrow">TRAINING HYPERPARAMETERS</span>
+          <h3>Core Optimization Settings</h3>
+        </div>
+      </div>
+      <div class="form-grid">
+        <label>Epochs (Training Iterations)
+          <input type="number" name="epochs" min="1" max="100" value="{{ job.get('epochs', 5) }}" required>
+        </label>
+        <label>Mini-Batch Size
+          <select name="batch_size">
+            <option value="8" {% if job.get('batch_size')==8 %}selected{% endif %}>8 samples / batch</option>
+            <option value="16" {% if job.get('batch_size', 16)==16 %}selected{% endif %}>16 samples / batch (Standard)</option>
+            <option value="32" {% if job.get('batch_size')==32 %}selected{% endif %}>32 samples / batch</option>
+            <option value="64" {% if job.get('batch_size')==64 %}selected{% endif %}>64 samples / batch</option>
+          </select>
+        </label>
+        <label>Initial Learning Rate
+          <input type="number" name="learning_rate" step="0.0001" min="0.00001" max="0.1" value="{{ job.get('learning_rate', 0.001) }}" required>
+        </label>
+        <label>Optimizer
+          <select name="optimizer">
+            <option value="Adam" {% if job.get('optimizer')=='Adam' %}selected{% endif %}>Adam (Adaptive Moments)</option>
+            <option value="AdamW" {% if job.get('optimizer')=='AdamW' %}selected{% endif %}>AdamW (Weight Decay)</option>
+            <option value="SGD" {% if job.get('optimizer')=='SGD' %}selected{% endif %}>SGD with Momentum (0.9)</option>
+          </select>
+        </label>
+        <label>Loss Function
+          <select name="loss">
+            <option value="Cross Entropy" selected>Cross Entropy Loss</option>
+            <option value="Weighted Cross Entropy">Weighted Cross Entropy (Imbalance-safe)</option>
+          </select>
+        </label>
+        <label>Tensor Input Resolution
+          <select name="image_size">
+            <option value="64" {% if job.get('image_size')==64 %}selected{% endif %}>64 × 64 px</option>
+            <option value="96" {% if job.get('image_size', 96)==96 %}selected{% endif %}>96 × 96 px</option>
+            <option value="128" {% if job.get('image_size')==128 %}selected{% endif %}>128 × 128 px</option>
+            <option value="224" {% if job.get('image_size')==224 %}selected{% endif %}>224 × 224 px</option>
+          </select>
+        </label>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">
+        <div>
+          <span class="eyebrow">EVALUATION STRATEGY</span>
+          <h3>Holdout & Metric</h3>
+        </div>
+      </div>
+      <div class="split-options">
+        {% for value, label in split_choices %}
+        <label>
+          <input type="radio" name="split_ratios" value="{{ value }}" {% if job.get('split_ratios', [0.8])[0] == value %}checked{% endif %}>
+          <span>{{ label }}</span>
+        </label>
+        {% endfor %}
+      </div>
+      <label class="full-field">Optimization / Ranking Metric
+        <select name="metric">
+          <option value="f1_macro" {% if job.get('metric')=='f1_macro' %}selected{% endif %}>Macro F1-Score (Evaluates All Classes Equally)</option>
+          <option value="accuracy" {% if job.get('metric')=='accuracy' %}selected{% endif %}>Overall Accuracy</option>
+        </select>
+      </label>
+    </div>
+  </div>
+
+  <div class="selected-strip">
+    <b>{{ selected|length }} model{{ 's' if selected|length != 1 else '' }} to train</b>
+    <span>{{ selected_labels|join(' · ') }}</span>
+  </div>
+
+  <div class="actions end">
+    <a class="btn secondary" href="{{ url_for('models_page', job_id=job_id) }}">← Change Models</a>
+    <button class="btn primary" type="submit" id="start-btn">Start Training <span>→</span></button>
+  </div>
+</form>
+{% endblock %}

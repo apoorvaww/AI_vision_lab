@@ -1,0 +1,64 @@
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+venv/
+.venv/
+env/
+ENV/
+
+# Environment variables and secrets
+.env
+.env.*
+!.env.example
+
+# Flask
+instance/
+
+# Generated application data
+webapp_data/uploads/*
+webapp_data/results/*
+
+# Preserve directory structure
+!webapp_data/uploads/.gitkeep
+!webapp_data/results/.gitkeep
+
+# Temporary files
+scratch/
+tmp/
+temp/
+*.tmp
+*.log
+
+# Testing and coverage
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Machine learning artifacts
+*.h5
+*.hdf5
+*.pt
+*.pth
+*.pkl
+*.joblib
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Build files
+build/
+dist/
+*.egg-info/
+
+# IDE
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
+Desktop.ini

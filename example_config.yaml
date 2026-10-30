@@ -1,0 +1,24 @@
+# Example Stage 1 search-space configuration.
+# Pass this to run_pipeline.py with --config example_config.yaml
+# or build this dict dynamically in your backend based on dataset size
+# (e.g. skip the CNN entirely if the user only uploaded 20 images).
+
+split_ratios:
+  - 0.7
+  - 0.8
+  - 0.9
+
+search_space:
+  random_forest:
+    n_estimators: [100, 200]
+    max_depth: [null, 10]
+
+  xgboost:
+    n_estimators: [100, 200]
+    max_depth: [3, 6]
+    learning_rate: [0.05, 0.1]
+
+  small_cnn:
+    epochs: [5]
+    batch_size: [16]
+    learning_rate: [0.001]

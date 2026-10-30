@@ -1,0 +1,64 @@
+{% extends 'base.html' %}{% block title %}Select Models — AI VisionLab{% endblock %}{% block content %}
+<div class="page-head">
+  <span class="step">STEP 04</span>
+  <h1>Select Model Architectures</h1>
+  <p>Select one or more deep-learning architectures, hybrid networks, ensemble methods, or classical baselines. AI VisionLab will train each chosen model on the same leakage-safe splits so you can evaluate and compare them side by side.</p>
+</div>
+
+<form action="{{ url_for('save_models', job_id=job_id) }}" method="post">
+  <div class="model-groups">
+    {% set family_titles = {
+        'dl':       'Deep Learning & Transfer Learning',
+        'ml':       'Classical ML Baselines',
+        'hybrid':   'Hybrid Architectures',
+        'ensemble': 'Ensemble Models'
+    } %}
+    {% set family_descs = {
+        'dl':       'Pretrained ImageNet backbones and CNNs regularized with dropout and validation checkpointing.',
+        'ml':       'Fast, deterministic baselines trained on spatial HOG descriptors and color histograms.',
+        'hybrid':   'CNN combined with attention mechanisms or transformer encoders for richer feature learning.',
+        'ensemble': 'Combine multiple base classifiers to reduce variance and boost generalization.'
+    } %}
+    {% for family, models in model_groups.items() %}
+    <section>
+      <div class="section-title">
+        <div>
+          <span class="eyebrow">{{ family|upper }} ARCHITECTURES</span>
+          <h2>{{ family_titles.get(family, family|title) }}</h2>
+        </div>
+        <p>{{ family_descs.get(family, '') }}</p>
+      </div>
+
+      <div class="model-grid">
+        {% for key, m in models.items() %}
+        <label class="model-card {% if not m.available %}unavailable{% endif %}">
+          <input type="checkbox" name="models" value="{{ key }}" {% if key in selected %}checked{% endif %} {% if not m.available %}disabled{% endif %}>
+          <span class="check">✓</span>
+          <div class="model-symbol">{{ m.symbol }}</div>
+          <div style="display:flex;justify-content:space-between;align-items:baseline">
+            <h3>{{ m.label }}</h3>
+          </div>
+          <span style="display:inline-block;margin-bottom:8px;font-size:9px;background:#f0eeff;color:var(--accent);padding:3px 7px;border-radius:5px;font-weight:700">{{ m.params_approx }}</span>
+          <p>{{ m.description }}</p>
+          {% if m.architecture_info %}
+          <small style="display:block;margin-top:8px;color:#475569"><b>Architecture:</b> {{ m.architecture_info }}</small>
+          {% endif %}
+          {% if m.use_case %}
+          <small style="display:block;margin-top:4px;color:#64748b"><b>Best For:</b> {{ m.use_case }}</small>
+          {% endif %}
+          {% if not m.available %}
+          <em>Dependency unavailable in environment</em>
+          {% endif %}
+        </label>
+        {% endfor %}
+      </div>
+    </section>
+    {% endfor %}
+  </div>
+
+  <div class="actions end">
+    <a class="btn secondary" href="{{ url_for('preprocessing_page', job_id=job_id) }}">← Back to Preprocessing</a>
+    <button class="btn primary" type="submit">Configure Selected Model(s) →</button>
+  </div>
+</form>
+{% endblock %}
